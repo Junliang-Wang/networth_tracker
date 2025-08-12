@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>networth</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+  <style>
+    .stat { font-size: 1.2rem; font-weight: 600; }
+    .muted { color: #666; }
+    .container { max-width: 1080px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <nav>
+      <ul>
+        <li><strong>networth</strong></li>
+      </ul>
+      <ul>
+        <li><a href="/">Dashboard</a></li>
+        <li><a href="/snapshots/">Snapshots</a></li>
+        <li><a href="/accounts/">Accounts</a></li>
+      </ul>
+    </nav>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Accounts</h2>
+<details open>
+  <summary>Add account</summary>
+  <form method="post" action="/accounts/create">
+    <div class="grid-2">
+      <label>Name <input name="name" required></label>
+      <label>Currency (ISO) <input name="currency_code" placeholder="AUD" required></label>
+      <label>Category
+        <select name="category_id" required>
+          {% for c in categories %}
+          <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Tags (comma-separated) <input name="tags" placeholder="Super, Crypto"></label>
+    </div>
+    <label>Notes <textarea name="notes" rows="2"></textarea></label>
+    <button type="submit">Save</button>
+  </form>
+</details>
+
+<table role="grid">
+  <thead><tr><th>Name</th><th>Category</th><th>Currency</th><th>Tags</th><th>Archived</th><th>Action</th></tr></thead>
+  <tbody>
+  {% for a in accounts %}
+    <tr>
+      <td>{{ a.name }}</td>
+      <td>{{ cat_map.get(a.category_id, a.category_id) }}</td>
+      <td>{{ a.currency_code }}</td>
+      <td><!-- tag list omitted in v1 --></td>
+      <td>{{ "Yes" if a.is_archived else "No" }}</td>
+      <td>
+        {% if not a.is_archived %}
+        <form method="post" action="/accounts/archive/{{ a.id }}">
+          <button>Archive</button>
+        </form>
+        {% else %}-{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

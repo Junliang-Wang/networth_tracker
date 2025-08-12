@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Dashboard</h2>
+<div class="grid-2">
+  <article>
+    <header><strong>Net worth over time</strong></header>
+    <canvas id="nwChart"></canvas>
+  </article>
+  <article>
+    <header><strong>Now</strong></header>
+    <p class="stat">Current Net Worth: {{ current | round(2) }} {{ base }}</p>
+    {% if delta_abs is not none and delta_pct is not none %}
+      <p class="muted">Rolling 12-month change: {{ delta_abs | round(2) }} {{ base }} ({{ delta_pct }}%)</p>
+    {% else %}
+      <p class="muted">Rolling 12-month change: —</p>
+    {% endif %}
+  </article>
+</div>
+<script>
+const points = {{ points | tojson }};
+const labels = points.map(p => p.date);
+const data = points.map(p => p.total);
+const ctx = document.getElementById('nwChart');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      label: 'Net Worth ({{ base }})',
+      data,
+      tension: 0.2,
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: { y: { beginAtZero: false } },
+  }
+});
+</script>
+{% endblock %}
