@@ -48,29 +48,26 @@
 
   <article>
     <header><strong>Investment flows (since previous snapshot)</strong></header>
-    {% set any_inv = false %}
-    {% for a in accounts %}{% if a.category_id == 2 %}{% set any_inv = true %}{% endif %}{% endfor %}
-    {% if not any_inv %}
+    {% set inv_accounts = accounts | selectattr("category_id", "equalto", inv_category_id) | list %}
+    {% if inv_accounts | length == 0 %}
       <p class="muted">No investment accounts yet.</p>
     {% else %}
       <table role="grid">
         <thead><tr><th>Account</th><th>Deposit*</th><th>Withdrawal</th><th>Fees</th><th>Div/Int</th><th>Realized P/L</th></tr></thead>
         <tbody>
-        {% for a in accounts %}
-          {% if a.category_id == 2 %}
+        {% for a in inv_accounts %}
           <tr>
             <td>{{ a.name }}</td>
             <td><input name="dep_{{ a.id }}" inputmode="decimal" value="0" required></td>
             <td><input name="wd_{{ a.id }}" inputmode="decimal" value="0"></td>
             <td><input name="fee_{{ a.id }}" inputmode="decimal" value="0"></td>
             <td><input name="div_{{ a.id }}" inputmode="decimal" value="0"></td>
-            <td><input name="pl_{{ a.id }}" inputmode="decimal" value="0"></td>
+            <td><input name="pl_{{ a.id }}"  inputmode="decimal" value="0"></td>
           </tr>
-          {% endif %}
         {% endfor %}
         </tbody>
       </table>
-      <p class="muted">* Deposit is required (can be 0) to keep flow semantics clear.</p>
+      <p class="muted">* Deposit is required (can be 0).</p>
     {% endif %}
   </article>
 

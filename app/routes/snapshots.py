@@ -21,18 +21,39 @@ def list_snapshots(request: Request):
 
 @router.get("/new", response_class=HTMLResponse)
 def new_snapshot(request: Request):
+    from datetime import date
     with get_session() as s:
-        accounts = s.exec(select(Account).where(Account.is_archived == False).order_by(Account.name)).all()
+        accounts = s.exec(
+            select(Account).where(Account.is_archived == False).order_by(Account.name)
+        ).all()
         categories = s.exec(select(Category)).all()
-    # currencies used
-    currencies = sorted({a.currency_code for a in accounts})
-    return request.app.state.templates.TemplateResponse("snapshot_form.html", {
-        "request": request,
-        "accounts": accounts,
-        "categories": categories,
-        "currencies": currencies,
-        "today": date.today().isoformat()
-    })
+        inv_cat = s.exec(select(Category).where(Category.name == "Investments")).first()
+        inv_category_id = inv_cat.id if inv_cat else None
+
+        currencies = sorted({a.currency_code for a in accounts})
+
+        # prefill from last snapshot (optional nice-to-have)
+        last = s.exec(select(Snapshot).order_by(Snapshot.snapshot_date.desc())).first()
+        prefill_fx, prefill_bal = {}, {}
+        if last:
+            for r in s.exec(select(FXRate).where(FXRate.snapshot_id == last.id)).all():
+                prefill_fx[r.currency_code] = r.rate_to_base
+            for b in s.exec(select(Balance).where(Balance.snapshot_id == last.id)).all():
+                prefill_bal[b.account_id] = b.native_balance
+
+    return request.app.state.templates.TemplateResponse(
+        "snapshot_form.html",
+        {
+            "request": request,
+            "accounts": accounts,
+            "categories": categories,
+            "currencies": currencies,
+            "today": date.today().isoformat(),
+            "prefill_fx": prefill_fx,
+            "prefill_bal": prefill_bal,
+            "inv_category_id": inv_category_id,   # <-- pass it
+        },
+    )
 
 @router.post("/create")
 async def create_snapshot(
@@ -117,15 +138,13 @@ def edit_snapshot(request: Request, snapshot_id: int):
         if not snap:
             return RedirectResponse(url="/snapshots/", status_code=303)
 
-        # include ALL accounts (archived + active)
-        accounts = s.exec(select(Account).order_by(Account.name)).all()
+        accounts = s.exec(select(Account).order_by(Account.name)).all()  # include archived
         categories = s.exec(select(Category)).all()
+        inv_cat = s.exec(select(Category).where(Category.name == "Investments")).first()
+        inv_category_id = inv_cat.id if inv_cat else None
 
-        # existing FX on this snapshot
         prefill_fx = {r.currency_code: r.rate_to_base
                       for r in s.exec(select(FXRate).where(FXRate.snapshot_id == snapshot_id)).all()}
-
-        # balances + flows prefills
         prefill_bal = {b.account_id: b.native_balance
                        for b in s.exec(select(Balance).where(Balance.snapshot_id == snapshot_id)).all()}
         flows = s.exec(select(InvestmentFlow).where(InvestmentFlow.snapshot_id == snapshot_id)).all()
@@ -135,7 +154,6 @@ def edit_snapshot(request: Request, snapshot_id: int):
             for f in flows
         }
 
-        # union: currencies from accounts + saved FX (exclude base)
         acct_curs = {a.currency_code for a in accounts}
         saved_curs = set(prefill_fx.keys())
         currencies = sorted((acct_curs | saved_curs) - {snap.base_currency})
@@ -151,8 +169,10 @@ def edit_snapshot(request: Request, snapshot_id: int):
             "prefill_fx": prefill_fx,
             "prefill_bal": prefill_bal,
             "prefill_flow": prefill_flow,
+            "inv_category_id": inv_category_id,   # <-- pass it
         },
     )
+
 
 
 @router.post("/{snapshot_id}/update")
