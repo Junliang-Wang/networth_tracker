@@ -19,7 +19,7 @@
           <button>Edit</button>
         </form>
         <form method="post" action="/snapshots/{{ item.snap.id }}/delete" style="display:inline;"
-              onsubmit="return confirm('Delete this snapshot? This will remove its FX, balances and flows.');">
+              onsubmit="return confirm('Are you sure you want to delete this snapshot? This will permanently remove its FX rates, balances, and flows.');">
           <button class="contrast">Delete</button>
         </form>
       </td>

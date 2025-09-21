@@ -109,6 +109,7 @@ async def create_snapshot(
         s.commit()
 
     return RedirectResponse(url="/snapshots/", status_code=303)
+
 @router.get("/{snapshot_id}/edit", response_class=HTMLResponse)
 def edit_snapshot(request: Request, snapshot_id: int):
     with get_session() as s:
@@ -116,7 +117,8 @@ def edit_snapshot(request: Request, snapshot_id: int):
         if not snap:
             return RedirectResponse(url="/snapshots/", status_code=303)
 
-        accounts = s.exec(select(Account).where(Account.is_archived == False).order_by(Account.name)).all()
+        # include ALL accounts (archived + active)
+        accounts = s.exec(select(Account).order_by(Account.name)).all()
         categories = s.exec(select(Category)).all()
 
         # existing FX on this snapshot
@@ -133,7 +135,7 @@ def edit_snapshot(request: Request, snapshot_id: int):
             for f in flows
         }
 
-        # union of currencies: accounts + saved FX (exclude base)
+        # union: currencies from accounts + saved FX (exclude base)
         acct_curs = {a.currency_code for a in accounts}
         saved_curs = set(prefill_fx.keys())
         currencies = sorted((acct_curs | saved_curs) - {snap.base_currency})
