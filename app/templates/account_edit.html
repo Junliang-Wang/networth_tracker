@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit account</h2>
+
+<form method="post" action="/accounts/update/{{ acct.id }}">
+  <div class="grid-2">
+    <label>Name
+      <input name="name" value="{{ acct.name }}" required>
+    </label>
+    <label>Currency (ISO)
+      <input name="currency_code" value="{{ acct.currency_code }}" required>
+    </label>
+    <label>Category
+      <select name="category_id" required>
+        {% for c in categories %}
+          <option value="{{ c.id }}" {% if c.id == acct.category_id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Tags (comma-separated)
+      <input name="tags" value="{{ tags_csv }}">
+    </label>
+  </div>
+  <label>Notes
+    <textarea name="notes" rows="3">{{ acct.notes or "" }}</textarea>
+  </label>
+  <label>
+    <input type="checkbox" name="is_archived" {% if acct.is_archived %}checked{% endif %}>
+    Archived
+  </label>
+  <div style="margin-top:1rem;">
+    <button type="submit">Save</button>
+    <a href="/accounts/">Cancel</a>
+  </div>
+</form>
+{% endblock %}

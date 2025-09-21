@@ -1,6 +1,14 @@
 {% extends "base.html" %}
+
 {% block content %}
+{% if error %}
+<p style="background:#fff3cd;color:#664d03;padding:.6rem .8rem;border:1px solid #ffe69c;border-radius:.5rem;">
+  {{ error }}
+</p>
+{% endif %}
+
 <h2>Accounts</h2>
+
 <details open>
   <summary>Add account</summary>
   <form method="post" action="/accounts/create">
@@ -10,7 +18,7 @@
       <label>Category
         <select name="category_id" required>
           {% for c in categories %}
-          <option value="{{ c.id }}">{{ c.name }}</option>
+            <option value="{{ c.id }}">{{ c.name }}</option>
           {% endfor %}
         </select>
       </label>
@@ -22,7 +30,11 @@
 </details>
 
 <table role="grid">
-  <thead><tr><th>Name</th><th>Category</th><th>Currency</th><th>Tags</th><th>Archived</th><th>Action</th></tr></thead>
+  <thead>
+    <tr>
+      <th>Name</th><th>Category</th><th>Currency</th><th>Tags</th><th>Archived</th><th>Action</th>
+    </tr>
+  </thead>
   <tbody>
   {% for a in accounts %}
     <tr>
@@ -31,12 +43,23 @@
       <td>{{ a.currency_code }}</td>
       <td><!-- tag list omitted in v1 --></td>
       <td>{{ "Yes" if a.is_archived else "No" }}</td>
-      <td>
-        {% if not a.is_archived %}
-        <form method="post" action="/accounts/archive/{{ a.id }}">
-          <button>Archive</button>
+      <td style="white-space:nowrap;">
+        <form method="get" action="/accounts/edit/{{ a.id }}" style="display:inline;">
+          <button>Edit</button>
         </form>
-        {% else %}-{% endif %}
+        {% if not a.is_archived %}
+          <form method="post" action="/accounts/archive/{{ a.id }}" style="display:inline;">
+            <button>Archive</button>
+          </form>
+        {% else %}
+          <form method="post" action="/accounts/unarchive/{{ a.id }}" style="display:inline;">
+            <button>Unarchive</button>
+          </form>
+        {% endif %}
+          <form method="post" action="/accounts/delete/{{ a.id }}" style="display:inline;"
+                onsubmit="return confirm('Delete this account? Allowed only if it has no balances/flows.');">
+            <button class="contrast">Delete</button>
+          </form>
       </td>
     </tr>
   {% endfor %}
