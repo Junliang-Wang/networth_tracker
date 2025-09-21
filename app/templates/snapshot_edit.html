@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Edit snapshot</h2>
+
+<form method="post" action="/snapshots/{{ snap.id }}/update">
+  <article>
+    <header><strong>Meta</strong></header>
+    <div class="grid-2">
+      <label>Date <input type="date" name="snapshot_date" value="{{ snap.snapshot_date }}" required></label>
+      <label>Base currency <input name="base_currency" value="{{ snap.base_currency }}" required></label>
+    </div>
+    <label>Notes <textarea name="notes" rows="2">{{ snap.notes or "" }}</textarea></label>
+  </article>
+
+  <article>
+    <header><strong>FX rates (to base)</strong></header>
+    {% if currencies|length == 0 %}
+      <p class="muted">No non-base currencies for active accounts.</p>
+    {% else %}
+      <div class="grid-2">
+      {% for cur in currencies %}
+        <label>{{ cur }} → base
+          <input name="fx_{{ cur }}" inputmode="decimal" value="{{ prefill_fx.get(cur, '') }}" required>
+        </label>
+      {% endfor %}
+      </div>
+      <p class="muted">Base currency uses 1.0 automatically.</p>
+    {% endif %}
+  </article>
+
+  <article>
+    <header><strong>Balances</strong></header>
+    {% if accounts|length == 0 %}
+      <p>No accounts yet. <a href="/accounts/">Create some accounts</a> first.</p>
+    {% else %}
+      <table role="grid">
+        <thead><tr><th>Account</th><th>Category</th><th>Currency</th><th>Balance (native)</th></tr></thead>
+        <tbody>
+        {% for a in accounts %}
+          <tr>
+            <td>{{ a.name }}</td>
+            <td>{{ categories | selectattr("id", "equalto", a.category_id) | map(attribute="name") | list | first }}</td>
+            <td>{{ a.currency_code }}</td>
+            <td>
+              <input name="bal_{{ a.id }}" inputmode="decimal" required value="{{ prefill_bal.get(a.id, 0) }}">
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </article>
+
+  <article>
+    <header><strong>Investment flows (since previous snapshot)</strong></header>
+    {% set any_inv = false %}
+    {% for a in accounts %}{% if a.category_id == 2 %}{% set any_inv = true %}{% endif %}{% endfor %}
+    {% if not any_inv %}
+      <p class="muted">No investment accounts yet.</p>
+    {% else %}
+      <table role="grid">
+        <thead><tr><th>Account</th><th>Deposit*</th><th>Withdrawal</th><th>Fees</th><th>Div/Int</th><th>Realized P/L</th></tr></thead>
+        <tbody>
+        {% for a in accounts if a.category_id == 2 %}
+          {% set f = prefill_flow.get(a.id, {}) %}
+          <tr>
+            <td>{{ a.name }}</td>
+            <td><input name="dep_{{ a.id }}" inputmode="decimal" value="{{ f.get('deposit', 0) }}" required></td>
+            <td><input name="wd_{{ a.id }}" inputmode="decimal" value="{{ f.get('withdrawal', 0) }}"></td>
+            <td><input name="fee_{{ a.id }}" inputmode="decimal" value="{{ f.get('fees', 0) }}"></td>
+            <td><input name="div_{{ a.id }}" inputmode="decimal" value="{{ f.get('dividends_interest', 0) }}"></td>
+            <td><input name="pl_{{ a.id }}" inputmode="decimal" value="{{ f.get('realized_pl', 0) }}"></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted">* Deposit is required (can be 0).</p>
+    {% endif %}
+  </article>
+
+  <button type="submit">Save changes</button>
+  <a href="/snapshots/">Cancel</a>
+</form>
+{% endblock %}

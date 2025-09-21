@@ -3,15 +3,29 @@
 <h2>Snapshots</h2>
 <p><a href="/snapshots/new">Create snapshot</a></p>
 <table role="grid">
-  <thead><tr><th>Date</th><th>Base</th><th>Net Worth (base)</th></tr></thead>
+  <thead>
+    <tr>
+      <th>Date</th><th>Base</th><th>Net Worth (base)</th><th>Action</th>
+    </tr>
+  </thead>
   <tbody>
   {% for item in snaps %}
     <tr>
       <td>{{ item.snap.snapshot_date }}</td>
       <td>{{ item.snap.base_currency }}</td>
       <td>{{ item.total | round(2) }}</td>
+      <td style="white-space:nowrap;">
+        <form method="get" action="/snapshots/{{ item.snap.id }}/edit" style="display:inline;">
+          <button>Edit</button>
+        </form>
+        <form method="post" action="/snapshots/{{ item.snap.id }}/delete" style="display:inline;"
+              onsubmit="return confirm('Delete this snapshot? This will remove its FX, balances and flows.');">
+          <button class="contrast">Delete</button>
+        </form>
+      </td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
+
 {% endblock %}
