@@ -109,7 +109,6 @@ async def create_snapshot(
         s.commit()
 
     return RedirectResponse(url="/snapshots/", status_code=303)
-
 @router.get("/{snapshot_id}/edit", response_class=HTMLResponse)
 def edit_snapshot(request: Request, snapshot_id: int):
     with get_session() as s:
@@ -120,9 +119,11 @@ def edit_snapshot(request: Request, snapshot_id: int):
         accounts = s.exec(select(Account).where(Account.is_archived == False).order_by(Account.name)).all()
         categories = s.exec(select(Category)).all()
 
-        # Prefills from current snapshot
+        # existing FX on this snapshot
         prefill_fx = {r.currency_code: r.rate_to_base
                       for r in s.exec(select(FXRate).where(FXRate.snapshot_id == snapshot_id)).all()}
+
+        # balances + flows prefills
         prefill_bal = {b.account_id: b.native_balance
                        for b in s.exec(select(Balance).where(Balance.snapshot_id == snapshot_id)).all()}
         flows = s.exec(select(InvestmentFlow).where(InvestmentFlow.snapshot_id == snapshot_id)).all()
@@ -132,7 +133,10 @@ def edit_snapshot(request: Request, snapshot_id: int):
             for f in flows
         }
 
-        currencies = sorted({a.currency_code for a in accounts if a.currency_code != snap.base_currency})
+        # union of currencies: accounts + saved FX (exclude base)
+        acct_curs = {a.currency_code for a in accounts}
+        saved_curs = set(prefill_fx.keys())
+        currencies = sorted((acct_curs | saved_curs) - {snap.base_currency})
 
     return request.app.state.templates.TemplateResponse(
         "snapshot_edit.html",
@@ -147,6 +151,7 @@ def edit_snapshot(request: Request, snapshot_id: int):
             "prefill_flow": prefill_flow,
         },
     )
+
 
 @router.post("/{snapshot_id}/update")
 async def update_snapshot(
@@ -181,35 +186,48 @@ async def update_snapshot(
         if not snap:
             return RedirectResponse(url="/snapshots/", status_code=303)
 
+        # update meta
         snap.snapshot_date = date.fromisoformat(snapshot_date)
         snap.base_currency = base_currency.upper()
         snap.notes = notes
         s.add(snap)
         s.commit()
 
+        # --- merge FX: existing + new form values ---
+        prev_fx = {
+            r.currency_code: r.rate_to_base
+            for r in s.exec(select(FXRate).where(FXRate.snapshot_id == snapshot_id)).all()
+        }
+        merged_fx = {**prev_fx, **fx_items}          # form overrides prior
+        merged_fx[snap.base_currency] = 1.0          # base is always 1.0
+
         # clear old rows (manual cascade)
         s.exec(delete(FXRate).where(FXRate.snapshot_id == snapshot_id))
         s.exec(delete(Balance).where(Balance.snapshot_id == snapshot_id))
         s.exec(delete(InvestmentFlow).where(InvestmentFlow.snapshot_id == snapshot_id))
 
-        # re-insert
-        fx_items[snap.base_currency] = 1.0
-        for cur, rate in fx_items.items():
+        # re-insert FX
+        for cur, rate in merged_fx.items():
+            if cur == snap.base_currency:
+                rate = 1.0
             if rate <= 0:
                 raise ValueError(f"FX rate for {cur} must be > 0")
             s.add(FXRate(snapshot_id=snapshot_id, currency_code=cur, rate_to_base=rate))
 
+        # re-insert balances
         for account_id, native_balance in balance_items.items():
             s.add(Balance(snapshot_id=snapshot_id, account_id=account_id, native_balance=native_balance))
 
+        # re-insert flows
         for account_id, flows in flow_items.items():
             s.add(InvestmentFlow(snapshot_id=snapshot_id, account_id=account_id,
-                                 deposit=flows.get("deposit", 0.0),
-                                 withdrawal=flows.get("withdrawal", 0.0),
-                                 fees=flows.get("fees", 0.0),
-                                 dividends_interest=flows.get("dividends_interest", 0.0),
-                                 realized_pl=flows.get("realized_pl", 0.0)))
+                                deposit=flows.get("deposit", 0.0),
+                                withdrawal=flows.get("withdrawal", 0.0),
+                                fees=flows.get("fees", 0.0),
+                                dividends_interest=flows.get("dividends_interest", 0.0),
+                                realized_pl=flows.get("realized_pl", 0.0)))
         s.commit()
+
 
     return RedirectResponse(url="/snapshots/", status_code=303)
 
