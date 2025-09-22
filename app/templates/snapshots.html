@@ -13,7 +13,7 @@
     <tr>
       <td>{{ item.snap.snapshot_date }}</td>
       <td>{{ item.snap.base_currency }}</td>
-      <td>{{ item.total | round(2) }}</td>
+      <td>{{ "{:,.2f}".format(item.total) }}</td>
       <td style="white-space:nowrap;">
         <form method="get" action="/snapshots/{{ item.snap.id }}/edit" style="display:inline;">
           <button>Edit</button>
