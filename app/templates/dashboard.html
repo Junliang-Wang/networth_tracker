@@ -8,7 +8,8 @@
   </article>
   <article>
     <header><strong>Now</strong></header>
-    <p class="stat">Current Net Worth: {{ current | round(2) }} {{ base }}</p>
+    <p class="stat">Current Net Worth: {{ "{:,.2f}".format(current) }} {{ base }}</p>
+    <!-- <p class="stat">Current Net Worth: {{ current | round(2) }} {{ base }}</p> -->
     {% if delta_abs is not none and delta_pct is not none %}
       <p class="muted">Rolling 12-month change: {{ delta_abs | round(2) }} {{ base }} ({{ delta_pct }}%)</p>
     {% else %}

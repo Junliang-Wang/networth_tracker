@@ -5,15 +5,15 @@
 <table role="grid">
   <thead>
     <tr>
-      <th>Date</th><th>Base</th><th>Net Worth (base)</th><th>Action</th>
+      <th>Date</th><th>Net Worth</th><th>Base</th><th>Action</th>
     </tr>
   </thead>
   <tbody>
   {% for item in snaps %}
     <tr>
       <td>{{ item.snap.snapshot_date }}</td>
-      <td>{{ item.snap.base_currency }}</td>
       <td>{{ "{:,.2f}".format(item.total) }}</td>
+      <td>{{ item.snap.base_currency }}</td>
       <td style="white-space:nowrap;">
         <form method="get" action="/snapshots/{{ item.snap.id }}/edit" style="display:inline;">
           <button>Edit</button>
