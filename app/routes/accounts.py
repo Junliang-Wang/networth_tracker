@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlmodel import select
+from sqlmodel import select, delete
 from ..db import get_session
 from ..models import Account, Category, Tag, AccountTag, Balance, InvestmentFlow
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 router = APIRouter(prefix="/accounts")
 
@@ -141,30 +141,44 @@ def unarchive_account(account_id: int):
 
 @router.post("/delete/{account_id}")
 def delete_account(account_id: int):
-    """Hard-delete only if the account has no balances/flows; otherwise refuse."""
-    def resp(msg: str) -> RedirectResponse:
-        return RedirectResponse(url=f"/accounts/?error={msg.replace(' ', '+')}", status_code=303)
-
     with get_session() as s:
         acct = s.get(Account, account_id)
         if not acct:
-            return resp("Account not found")
+            return RedirectResponse(url="/accounts/?error=Account+not+found", status_code=303)
 
+        # only count NON-ZERO usage
         has_bal = s.exec(
-            select(func.count(Balance.account_id)).where(Balance.account_id == account_id)
+            select(func.count(Balance.account_id)).where(
+                Balance.account_id == account_id,
+                Balance.native_balance != 0
+            )
         ).one()
         has_flow = s.exec(
-            select(func.count(InvestmentFlow.account_id)).where(InvestmentFlow.account_id == account_id)
+            select(func.count(InvestmentFlow.account_id)).where(
+                InvestmentFlow.account_id == account_id,
+                or_(
+                    InvestmentFlow.deposit != 0,
+                    InvestmentFlow.withdrawal != 0,
+                    InvestmentFlow.fees != 0,
+                    InvestmentFlow.dividends_interest != 0,
+                    InvestmentFlow.realized_pl != 0,
+                )
+            )
         ).one()
 
-
         if has_bal or has_flow:
-            return resp("Cannot delete: account has historical balances/flows. Archive instead.")
+            return RedirectResponse(
+                url="/accounts/?error=Cannot+delete+this+account:+it+has+non-zero+balances/flows.+Archive+instead.",
+                status_code=303,
+            )
 
-        # remove tag links then delete account
-        for link in s.exec(select(AccountTag).where(AccountTag.account_id == account_id)).all():
-            s.delete(link)
+        # clean up zero-only references first
+        s.exec(delete(Balance).where(Balance.account_id == account_id))
+        s.exec(delete(InvestmentFlow).where(InvestmentFlow.account_id == account_id))
+        s.exec(delete(AccountTag).where(AccountTag.account_id == account_id))  # <-- remove tag links
+
+        # finally delete the account
         s.delete(acct)
         s.commit()
 
-    return resp("Account deleted")
+    return RedirectResponse(url="/accounts/?error=Account+deleted", status_code=303)
