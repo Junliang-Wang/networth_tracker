@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Settings</h2>
+
+{% if request.query_params.get("msg") %}
+<p style="background:#e7f7ec;color:#0e5f2a;padding:.6rem .8rem;border:1px solid #a7e1b9;border-radius:.5rem;">
+  {{ request.query_params.get("msg") }}
+</p>
+{% endif %}
+
+<article>
+  <header><strong>Data folder</strong></header>
+  <p><strong>Current folder:</strong> {{ data_folder }}</p>
+  <p><strong>Database file:</strong> {{ db_file }}</p>
+
+  <form method="post" action="/settings/choose" style="margin-top:.5rem;">
+    <button type="submit">Choose data folder…</button>
+  </form>
+
+  <p class="muted" style="margin-top:.5rem;">
+    This opens a native folder chooser on your machine. The choice is saved and used on next startup.
+  </p>
+</article>
+{% endblock %}
